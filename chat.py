@@ -51,7 +51,7 @@ def check_special_input(text):
         text = load_conversation_history()
     elif text == "switch":
         text = switch_model()
-    elif text == "temperature":
+    elif text == "temp":
         text = set_temperature()
     elif text == "exit":
         exit_script()
@@ -105,6 +105,18 @@ def exit_script():
 
 messages = [{"role": "system", "content": systemPrompt}]
 temperature = 0.5
+
+# Print list of special commands and description
+print("---------------------------------------------")
+print("\nBegin the chat by typing your message and hitting Enter. Here are some special commands you can use:\n")
+print("  file:   Send the contents of a text file as your message. It will ask you for the file path of the file.")
+print("  clear:  Clear the conversation history.")
+print("  save:   Save the conversation history to a file.")
+print("  load:   Load the conversation history from a file.")
+print("  switch: Switch the model.")
+print("  temp:   Set the temperature.")
+print("  exit:   Exit the script.\n")
+
 
 while True:
     userEnteredPrompt = input("\n >>>    ")
