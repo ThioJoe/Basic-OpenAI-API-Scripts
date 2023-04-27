@@ -1,5 +1,7 @@
 import openai
 import json
+import tkinter as tk
+from tkinter import scrolledtext
 
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
@@ -9,7 +11,7 @@ systemPrompt = "You are a helpful assistant."
 # Load API key from key.txt file
 def load_api_key(filename="key.txt"):
     try:
-        with open(filename, "r") as key_file:
+        with open(filename, "r", encoding='utf-8') as key_file:
             for line in key_file:
                 stripped_line = line.strip()
                 if not stripped_line.startswith('#') and stripped_line != '':
@@ -53,6 +55,8 @@ def check_special_input(text):
         text = switch_model()
     elif text == "temp":
         text = set_temperature()
+    elif text == "box":
+        text = get_multiline_input()
     elif text == "exit":
         exit_script()
     return text
@@ -103,6 +107,29 @@ def exit_script():
     print("\nExiting the script. Goodbye!")
     exit()
 
+def get_multiline_input():
+    def submit_text():
+        nonlocal user_input
+        user_input = text_box.get("1.0", tk.END)
+        root.quit()
+
+    user_input = ""
+    root = tk.Tk()
+    root.title("Multi-line Text Input")
+
+    # Create a scrolled text widget
+    text_box = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=40, height=10)
+    text_box.pack(padx=10, pady=10)
+
+    # Create a submit button
+    submit_button = tk.Button(root, text="Submit", command=submit_text)
+    submit_button.pack(pady=5)
+
+    root.mainloop()
+    root.destroy()
+
+    return user_input.strip()
+
 messages = [{"role": "system", "content": systemPrompt}]
 temperature = 0.5
 
@@ -110,6 +137,7 @@ temperature = 0.5
 print("---------------------------------------------")
 print("\nBegin the chat by typing your message and hitting Enter. Here are some special commands you can use:\n")
 print("  file:   Send the contents of a text file as your message. It will ask you for the file path of the file.")
+print("  box:    Send the contents of a multi-line text box as your message. It will open a new window with a text box.")
 print("  clear:  Clear the conversation history.")
 print("  save:   Save the conversation history to a file.")
 print("  load:   Load the conversation history from a file.")
@@ -122,4 +150,5 @@ while True:
     userEnteredPrompt = input("\n >>>    ")
     userEnteredPrompt = check_special_input(userEnteredPrompt)
     if userEnteredPrompt:
+        print("----------------------------------------------------------------------------------------------------")
         messages = send_and_receive_message(userEnteredPrompt, messages, temperature)
