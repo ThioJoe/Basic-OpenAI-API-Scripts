@@ -1,10 +1,20 @@
 import openai
 import json
 import tkinter as tk
+import datetime
+import os
 from tkinter import scrolledtext
 
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
+
+# Create 'Chat Logs' directory if it does not exist
+if not os.path.exists('Chat Logs'):
+    os.makedirs('Chat Logs')
+    
+# Create 'Saved Chats' directory if it does not exist
+if not os.path.exists('Saved Chats'):
+    os.makedirs('Saved Chats')    
 
 # ----------------------------------------------------------------------------------
 
@@ -24,6 +34,10 @@ def load_api_key(filename="key.txt"):
 
 openai.api_key = load_api_key()
 
+# Generate the filename only once when the script starts
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+log_file_path = os.path.join('Chat Logs', f'log_{timestamp}.txt')
+
 def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
     messagesTemp.append({"role": "user", "content": userMessage})
 
@@ -39,6 +53,12 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
     print("\n" + chatResponseMessage)
 
     messagesTemp.append({"role": chatResponseRole, "content": chatResponseMessage})
+
+    # Write chat history to the log file
+    with open(log_file_path, 'a', encoding='utf-8') as log_file:  # Notice 'a' for append mode
+        # Write the user message and the assistant response, capitalizing the role
+        log_file.write(f"{messagesTemp[-2]['role'].capitalize()}: {messagesTemp[-2]['content']}\n\n")  # Extra '\n' for blank line
+        log_file.write(f"    {messagesTemp[-1]['role'].capitalize()}: {messagesTemp[-1]['content']}\n\n")  # Indent assistant entries
 
     return messagesTemp
 
@@ -76,17 +96,19 @@ def clear_conversation_history():
 
 def save_conversation_history():
     filename = input("\nEnter the file name to save the conversation: ")
-    with open(filename, "w", encoding="utf-8") as outfile:
+    save_path = os.path.join('Saved Chats', filename)
+    with open(save_path, "w", encoding="utf-8") as outfile:
         json.dump(messages, outfile, ensure_ascii=False, indent=4)
-    print(f"\nConversation history saved to {filename}.")
+    print(f"\nConversation history saved to {save_path}.")
     return ""
 
 def load_conversation_history():
     filename = input("\nEnter the file name to load the conversation: ")
+    load_path = os.path.join('Saved Chats', filename)
     global messages
-    with open(filename, "r", encoding="utf-8") as infile:
+    with open(load_path, "r", encoding="utf-8") as infile:
         messages = json.load(infile)
-    print(f"\nConversation history loaded from {filename}.")
+    print(f"\nConversation history loaded from {load_path}.")
     return ""
 
 def switch_model():
