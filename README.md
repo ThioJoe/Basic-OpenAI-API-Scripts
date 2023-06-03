@@ -8,4 +8,4 @@ A basic script for interacting with the GPT-4 API and chatting with it via pytho
 3. Run `chat.py`
 
 ## Screenshot:
-![Screenshot in use](https://user-images.githubusercontent.com/12518330/229624719-0f453eb5-7c62-4d1b-837f-f34f849fda3f.png)
+<img width="817" alt="image" src="https://github.com/ThioJoe/Basic-GPT-API/assets/12518330/a2d5ba52-6377-4dc2-b0bb-60a73681c992">
