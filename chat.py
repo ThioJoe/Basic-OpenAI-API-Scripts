@@ -42,12 +42,18 @@ log_file_path = os.path.join('Chat Logs', f'log_{timestamp}.txt')
 def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
     messagesTemp.append({"role": "user", "content": userMessage})
 
+    # Log the user's message before the API call
+    with open(log_file_path, 'a', encoding='utf-8') as log_file:
+        # Indent the user entries and maintain indentation for multi-line responses
+        indented_user_message = f"{messagesTemp[-1]['content']}".replace('\n', '\n    ')
+        log_file.write(f"{messagesTemp[-1]['role'].capitalize()}:\n\n    {indented_user_message}\n\n")  # Extra '\n' for blank line
+
     chatResponse = openai.ChatCompletion.create(
         model=model,
         messages=messagesTemp,
         temperature=temperature
         )
-    
+
     chatResponseMessage = chatResponse.choices[0].message.content
     chatResponseRole = chatResponse.choices[0].message.role
 
@@ -55,11 +61,11 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
 
     messagesTemp.append({"role": chatResponseRole, "content": chatResponseMessage})
 
-    # Write chat history to the log file
-    with open(log_file_path, 'a', encoding='utf-8') as log_file:  # Notice 'a' for append mode
-        # Write the user message and the assistant response, capitalizing the role
-        log_file.write(f"{messagesTemp[-2]['role'].capitalize()}: {messagesTemp[-2]['content']}\n\n")  # Extra '\n' for blank line
-        log_file.write(f"    {messagesTemp[-1]['role'].capitalize()}: {messagesTemp[-1]['content']}\n\n")  # Indent assistant entries
+    # Write the assistant's response to the log file
+    with open(log_file_path, 'a', encoding='utf-8') as log_file:
+        # Indent the assistant entries and maintain indentation for multi-line responses
+        indented_response = f"{messagesTemp[-1]['content']}".replace('\n', '\n    ')
+        log_file.write(f"{messagesTemp[-1]['role'].capitalize()}:\n\n    {indented_response}\n\n")  # Indent assistant entries
 
     return messagesTemp
 
