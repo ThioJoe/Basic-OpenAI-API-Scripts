@@ -167,6 +167,7 @@ def get_multiline_input():
     user_input = ""
     root = tk.Tk()
     root.title("Multi-line Text Input")
+    root.attributes('-topmost', True)
 
     # Set the initial window size
     root.geometry('450x300')
