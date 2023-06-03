@@ -103,12 +103,17 @@ def save_conversation_history():
     return ""
 
 def load_conversation_history():
-    filename = input("\nEnter the file name to load the conversation: ")
-    load_path = os.path.join('Saved Chats', filename)
-    global messages
-    with open(load_path, "r", encoding="utf-8") as infile:
-        messages = json.load(infile)
-    print(f"\nConversation history loaded from {load_path}.")
+    try:
+        filename = input("\nEnter the file name to load the conversation: ")
+        load_path = os.path.join('Saved Chats', filename)
+        global messages
+        with open(load_path, "r", encoding="utf-8") as infile:
+            messages = json.load(infile)
+        print(f"\nConversation history loaded from {load_path}.")
+    except FileNotFoundError:
+        print(f"\nERROR: File '{filename}' not found. Please make sure the file exists in the 'Saved Chats' folder.")
+    except json.decoder.JSONDecodeError:
+        print(f"\nERROR: File '{filename}' is not a valid JSON file. Did you try to load a file that was not saved using the 'save' command? Note: The automatically generated log files cannot be loaded.")
     return ""
 
 def switch_model():
@@ -169,8 +174,8 @@ print("\nBegin the chat by typing your message and hitting Enter. Here are some 
 print("  file:   Send the contents of a text file as your message. It will ask you for the file path of the file.")
 print("  box:    Send the contents of a multi-line text box as your message. It will open a new window with a text box.")
 print("  clear:  Clear the conversation history.")
-print("  save:   Save the conversation history to a file.")
-print("  load:   Load the conversation history from a file.")
+print("  save:   Save the conversation history to a file in 'Saved Chats' folder.")
+print("  load:   Load the conversation history from a file in 'Saved Chats' folder.")
 print("  switch: Switch the model.")
 print("  temp:   Set the temperature.")
 print("  exit:   Exit the script.\n")
