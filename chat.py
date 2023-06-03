@@ -4,6 +4,7 @@ import tkinter as tk
 import datetime
 import os
 from tkinter import scrolledtext
+import glob
 
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
@@ -96,6 +97,10 @@ def clear_conversation_history():
 
 def save_conversation_history():
     filename = input("\nEnter the file name to save the conversation: ")
+    # Check if the filename has an extension. If not, add '.txt'
+    filename_without_ext, file_extension = os.path.splitext(filename)
+    if file_extension == '':
+        filename += '.txt'
     save_path = os.path.join('Saved Chats', filename)
     with open(save_path, "w", encoding="utf-8") as outfile:
         json.dump(messages, outfile, ensure_ascii=False, indent=4)
@@ -103,10 +108,28 @@ def save_conversation_history():
     return ""
 
 def load_conversation_history():
+    filename = input("\nEnter the file name to load the conversation: ")
+    filename_without_ext, file_extension = os.path.splitext(filename)
+    load_path = os.path.join('Saved Chats', filename)
+
+    # If no extension is provided, try to load a file with no extension
+    if file_extension == '':
+        if not os.path.exists(load_path):
+            # If no such file, try to load a file with a .txt extension
+            try_txt_path = os.path.join('Saved Chats', filename + '.txt')
+            if os.path.exists(try_txt_path):
+                load_path = try_txt_path
+            # If the file is still not found, look for any file with that base name
+            else:
+                potential_files = glob.glob(os.path.join('Saved Chats', filename + '.*'))
+                if len(potential_files) == 1:
+                    load_path = potential_files[0]
+                elif len(potential_files) > 1:
+                    print(f"\nERROR: Multiple files with the name '{filename}' found with different extensions. Please specify the full exact filename, including extension.")
+                    return ""
+
+    global messages
     try:
-        filename = input("\nEnter the file name to load the conversation: ")
-        load_path = os.path.join('Saved Chats', filename)
-        global messages
         with open(load_path, "r", encoding="utf-8") as infile:
             messages = json.load(infile)
         print(f"\nConversation history loaded from {load_path}.")
