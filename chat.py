@@ -107,6 +107,7 @@ def exit_script():
     print("\nExiting the script. Goodbye!")
     exit()
 
+
 def get_multiline_input():
     def submit_text():
         nonlocal user_input
@@ -117,13 +118,20 @@ def get_multiline_input():
     root = tk.Tk()
     root.title("Multi-line Text Input")
 
+    # Set the initial window size
+    root.geometry('450x300')
+
     # Create a scrolled text widget
-    text_box = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=40, height=10)
-    text_box.pack(padx=10, pady=10)
+    text_box = scrolledtext.ScrolledText(root, wrap=tk.WORD)
+    text_box.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
 
     # Create a submit button
     submit_button = tk.Button(root, text="Submit", command=submit_text)
-    submit_button.pack(pady=5)
+    submit_button.grid(row=1, column=0, pady=5)
+
+    # Configure the grid weights
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_columnconfigure(0, weight=1)
 
     root.mainloop()
     root.destroy()
