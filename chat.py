@@ -1,37 +1,35 @@
-import openai
-import json
+from tkinter import scrolledtext
 import tkinter as tk
 import datetime
-import os
-from tkinter import scrolledtext
+import openai
 import glob
+import json
+import os
+
 
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
+messages = [{"role": "system", "content": systemPrompt}]
+temperature = 0.5
 
-# Create 'Chat Logs' directory if it does not exist
-if not os.path.exists('Chat Logs'):
-    os.makedirs('Chat Logs')
-    
-# Create 'Saved Chats' directory if it does not exist
-if not os.path.exists('Saved Chats'):
-    os.makedirs('Saved Chats')    
+os.makedirs('Chat Logs', exist_ok=True)
+os.makedirs('Saved Chats', exist_ok=True)    
 
 # ----------------------------------------------------------------------------------
 
-# Load API key from key.txt file
 def load_api_key(filename="key.txt"):
-    try:
-        with open(filename, "r", encoding='utf-8') as key_file:
-            for line in key_file:
-                stripped_line = line.strip()
-                if not stripped_line.startswith('#') and stripped_line != '':
-                    api_key = stripped_line
-                    break
-        return api_key
-    except FileNotFoundError:
+    """ Load API key from key.txt file """
+
+    if not os.path.exists(filename):
         print("\nAPI key file not found. Please create a file named 'key.txt' in the same directory as this script and paste your API key in it.\n")
         exit()
+
+    with open(filename, "r", encoding='utf-8') as key_file:
+        for line in key_file.readlines():
+            stripped_line = line.strip()
+            if not stripped_line.startswith('#') and stripped_line:
+                return stripped_line
+        
 
 openai.api_key = load_api_key()
 
@@ -52,8 +50,7 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
         model=model,
         messages=messagesTemp,
         temperature=temperature
-        )
-
+    )
     chatResponseMessage = chatResponse.choices[0].message.content
     chatResponseRole = chatResponse.choices[0].message.role
 
@@ -70,99 +67,98 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
     return messagesTemp
 
 def check_special_input(text):
-    if text == "file":
-        text = get_text_from_file()
-    elif text == "clear":
-        text = clear_conversation_history()
-    elif text == "save":
-        text = save_conversation_history()
-    elif text == "load":
-        text = load_conversation_history()
-    elif text == "switch":
-        text = switch_model()
-    elif text == "temp":
-        text = set_temperature()
-    elif text == "box":
-        text = get_multiline_input()
-    elif text == "exit":
-        exit_script()
-    return text
+    special_values = {
+        "file": get_text_from_file,
+        "clear": clear_conversation_history,
+        "save": save_conversation_history,
+        "load": load_conversation_history,
+        "switch": switch_model,
+        "temp": set_temperature,
+        "box": get_multiline_input,
+        "exit": exit_script
+    }
+    value = special_values.get(text, None)
+    return value() if value is not None else text
 
 def get_text_from_file():
-    path = input("\nPath to the text file contents to send: ")
-    path = path.strip('"')
+    path = input("\nPath to the text file contents to send: ").strip('"')
+    if not os.path.exists(path):
+        print("\nThis path does not exists.\n")
+
     with open(path, "r", encoding="utf-8") as file:
-        text = file.read()
-    return text
+        return file.read()
 
 def clear_conversation_history():
     global messages
     messages = [{"role": "system", "content": systemPrompt}]
     print("\nConversation history cleared.")
-    return ""
 
 def save_conversation_history():
     filename = input("\nEnter the file name to save the conversation: ")
+
     # Check if the filename has an extension. If not, add '.txt'
-    filename_without_ext, file_extension = os.path.splitext(filename)
+    _, file_extension = os.path.splitext(filename)
     if file_extension == '':
         filename += '.txt'
     save_path = os.path.join('Saved Chats', filename)
+
     with open(save_path, "w", encoding="utf-8") as outfile:
         json.dump(messages, outfile, ensure_ascii=False, indent=4)
+
     print(f"\nConversation history saved to {save_path}.")
-    return ""
 
 def load_conversation_history():
+    global messages
+
     filename = input("\nEnter the file name to load the conversation: ")
-    filename_without_ext, file_extension = os.path.splitext(filename)
+    _, file_extension = os.path.splitext(filename)
     load_path = os.path.join('Saved Chats', filename)
 
     # If no extension is provided, try to load a file with no extension
-    if file_extension == '':
-        if not os.path.exists(load_path):
-            # If no such file, try to load a file with a .txt extension
-            try_txt_path = os.path.join('Saved Chats', filename + '.txt')
-            if os.path.exists(try_txt_path):
-                load_path = try_txt_path
-            # If the file is still not found, look for any file with that base name
-            else:
-                potential_files = glob.glob(os.path.join('Saved Chats', filename + '.*'))
-                if len(potential_files) == 1:
-                    load_path = potential_files[0]
-                elif len(potential_files) > 1:
-                    print(f"\nERROR: Multiple files with the name '{filename}' found with different extensions. Please specify the full exact filename, including extension.")
-                    return ""
+    if file_extension == '' and not os.path.exists(load_path):
 
-    global messages
+        # If no such file, try to load a file with a .txt extension
+        try_txt_path = os.path.join('Saved Chats', filename + '.txt')
+        if os.path.exists(try_txt_path):
+            load_path = try_txt_path
+
+        # If the file is still not found, look for any file with that base name
+        else:
+            potential_files = glob.glob(os.path.join('Saved Chats', filename + '.*'))
+            if len(potential_files) == 1:
+                load_path = potential_files[0]
+
+            elif len(potential_files) > 1:
+                print(f"\nERROR: Multiple files with the name '{filename}' found with different extensions. Please specify the full exact filename, including extension.")
+                return None
+
     try:
-        with open(load_path, "r", encoding="utf-8") as infile:
-            messages = json.load(infile)
+        with open(load_path, "r", encoding="utf-8") as file:
+            messages = json.load(file)
         print(f"\nConversation history loaded from {load_path}.")
+
     except FileNotFoundError:
         print(f"\nERROR: File '{filename}' not found. Please make sure the file exists in the 'Saved Chats' folder.")
+
     except json.decoder.JSONDecodeError:
         print(f"\nERROR: File '{filename}' is not a valid JSON file. Did you try to load a file that was not saved using the 'save' command? Note: The automatically generated log files cannot be loaded.")
-    return ""
-
+    
 def switch_model():
     global model
-    new_model = input("\nEnter the new model name (e.g., 'gpt-4', 'gpt-3', etc.): ")
-    model = new_model
+    model = input("\nEnter the new model name (e.g., 'gpt-4', 'gpt-3', etc.): ")
     print(f"\nModel switched to {model}.")
-    return ""
 
 def set_temperature():
     global temperature
-    temp = float(input("\nEnter a temperature value between 0 and 1 (default is 0.5): "))
-    temperature = temp
-    print(f"\nTemperature set to {temperature}.")
-    return ""
+    try:
+        temperature = float(input("\nEnter a temperature value between 0 and 1 (default is 0.5): "))
+        print(f"\nTemperature set to {temperature}.")
+    except ValueError:
+        print("\nERROR: Invalid temperature.")
 
 def exit_script():
     print("\nExiting the script. Goodbye!")
     exit()
-
 
 def get_multiline_input():
     def submit_text():
@@ -195,8 +191,6 @@ def get_multiline_input():
 
     return user_input.strip()
 
-messages = [{"role": "system", "content": systemPrompt}]
-temperature = 0.5
 
 # Print list of special commands and description
 print("---------------------------------------------")
@@ -214,6 +208,6 @@ print("  exit:   Exit the script.\n")
 while True:
     userEnteredPrompt = input("\n >>>    ")
     userEnteredPrompt = check_special_input(userEnteredPrompt)
-    if userEnteredPrompt:
+    if userEnteredPrompt and userEnteredPrompt is not None:
         print("----------------------------------------------------------------------------------------------------")
         messages = send_and_receive_message(userEnteredPrompt, messages, temperature)
