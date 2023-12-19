@@ -10,7 +10,7 @@
 # ========================================================= USER SETTINGS ==============================================================
 # ======================================================================================================================================
 
-num_requests = 3  # Number of images to generate
+num_requests = 4  # Number of images to generate
 
 # 4000 characters max prompt length for DALL-E 3, 1000 for DALL-E 2
 prompt = (
@@ -190,7 +190,11 @@ async def main():
         
         # Create a single tkinter window
         window = tk.Tk()
-        window.title("Image Preview")
+        window.title("Images Preview")
+        
+        # Set the window as topmost initially
+        window.attributes('-topmost', True)
+        window.after_idle(window.attributes, '-topmost', False)
 
         for i, img in enumerate(image_objects):
             # Resize image
