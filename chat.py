@@ -6,6 +6,10 @@ import os
 from tkinter import scrolledtext
 import glob
 
+# Some Models:
+# gpt-4
+# gpt-3.5-turbo-16k
+
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
 
@@ -40,6 +44,7 @@ timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_file_path = os.path.join('Chat Logs', f'log_{timestamp}.txt')
 
 def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
+	# Prepare to send request along with context by appending user message to previous conversation
     messagesTemp.append({"role": "user", "content": userMessage})
 
     # Log the user's message before the API call
@@ -59,6 +64,7 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
 
     print("\n" + chatResponseMessage)
 
+	# Append chatbot response to full conversation dictionary
     messagesTemp.append({"role": chatResponseRole, "content": chatResponseMessage})
 
     # Write the assistant's response to the log file
