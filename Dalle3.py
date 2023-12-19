@@ -39,14 +39,14 @@ output_dir = 'Image Outputs'
 import os
 from io import BytesIO
 from datetime import datetime
-import base64                  # If decoding base64 image data
-import requests                # If downloading from URL
+import base64
 from PIL import Image, ImageTk
 import tkinter as tk
 import asyncio
 import aiohttp
 from openai import OpenAI
 import math
+#import requests #If downloading from URL, not currently implemented
 
 # Load API key from key.txt file
 def load_api_key(filename="key.txt"):
