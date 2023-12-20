@@ -44,32 +44,31 @@ timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_file_path = os.path.join('Chat Logs', f'log_{timestamp}.txt')
 
 def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
-	# Prepare to send request along with context by appending user message to previous conversation
+    # Prepare to send request along with context by appending user message to previous conversation
     messagesTemp.append({"role": "user", "content": userMessage})
 
     # Log the user's message before the API call
     with open(log_file_path, 'a', encoding='utf-8') as log_file:
-        # Indent the user entries and maintain indentation for multi-line responses
         indented_user_message = f"{messagesTemp[-1]['content']}".replace('\n', '\n    ')
         log_file.write(f"{messagesTemp[-1]['role'].capitalize()}:\n\n    {indented_user_message}\n\n")  # Extra '\n' for blank line
 
-    chatResponse = openai.ChatCompletion.create(
+    # Call the OpenAI API
+    chatResponse = openai.chat.completions.create(
         model=model,
         messages=messagesTemp,
         temperature=temperature
-        )
-
-    chatResponseMessage = chatResponse.choices[0].message.content
-    chatResponseRole = chatResponse.choices[0].message.role
+    )
+    chatResponseData = chatResponse.choices[0].model_dump()["message"]
+    chatResponseMessage = chatResponseData["content"]
+    chatResponseRole = chatResponseData["role"]
 
     print("\n" + chatResponseMessage)
 
-	# Append chatbot response to full conversation dictionary
+    # Append chatbot response to full conversation dictionary
     messagesTemp.append({"role": chatResponseRole, "content": chatResponseMessage})
 
     # Write the assistant's response to the log file
     with open(log_file_path, 'a', encoding='utf-8') as log_file:
-        # Indent the assistant entries and maintain indentation for multi-line responses
         indented_response = f"{messagesTemp[-1]['content']}".replace('\n', '\n    ')
         log_file.write(f"{messagesTemp[-1]['role'].capitalize()}:\n\n    {indented_response}\n\n")  # Indent assistant entries
 
