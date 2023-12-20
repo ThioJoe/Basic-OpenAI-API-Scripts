@@ -20,7 +20,7 @@ prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Co
 image_params = {
 "model": "dall-e-3",  # dall-e-3 or dall-e-2
 "quality": "standard",  # Standard / HD - (DALLE-3 Only)
-"size": "1024x1024",  # 1792x1024 or 1024x1792 for DALL-E 3
+"size": "1024x1024",  # DALLE3 Options: 1024x1024 | 1792x1024 | 1024x1792
 "style": "vivid",  # "vivid" or "natural" - (DALLE-3 Only)
 # ------- Don't Change Below --------
 "prompt": prompt,     
