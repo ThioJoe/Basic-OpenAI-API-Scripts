@@ -6,7 +6,6 @@
 
 ## How to Use:
 1. Make sure any required packages are installed. You can use `pip install -r requirements.txt`
-   - Currently the only required package is `openai`
 2. Add your OpenAI API key to `key.txt`
 3. Run a script such as `chat.py` or `Dalle3.py`
 
