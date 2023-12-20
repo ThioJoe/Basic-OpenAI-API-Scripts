@@ -10,9 +10,8 @@
 # ========================================================= USER SETTINGS ==============================================================
 # ======================================================================================================================================
 
-# Number of images to generate
-# Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers
-num_requests = 2
+# Number of images to generate  |  (Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers )
+image_count = 2
 
 # 4000 characters max prompt length for DALL-E 3, 1000 for DALL-E 2
 prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Colored pencil drawing."
@@ -46,6 +45,23 @@ import aiohttp
 from openai import OpenAI
 import math
 #import requests #If downloading from URL, not currently implemented
+
+# Validate user settings
+if image_params["model"].lower() not in ["dall-e-3", "dall-e-2"]:
+    print(f"\nERROR - Invalid model: {image_params['model']}. Please choose either 'dall-e-3' or 'dall-e-2'.")
+    exit()
+if image_params["quality"].lower() not in ["standard", "hd"]:
+    print(f"\nERROR - Invalid quality: {image_params['quality']}. Please choose either 'standard' or 'hd'.")
+    exit()
+if image_params["style"].lower() not in ["vivid", "natural"]:
+    print(f"\nERROR - Invalid style: {image_params['style']}. Please choose either 'vivid' or 'natural'.")
+    exit()
+if image_params["size"] not in ["1024x1024", "1792x1024", "1024x1792"]:
+    print(f"\nERROR - Invalid size: {image_params['size']}. Please choose either '1024x1024', '1792x1024', or '1024x1792'.")
+    exit()
+if image_params["n"] > 1 and image_params["model"].lower() == "dall-e-3":
+    print(f"\nERROR - Invalid n value: {image_params['n']}. DALL-E 3 only supports n=1. To generate multiple images, set the 'image_count' variable.")
+    exit()
 
 # Load API key from key.txt file
 def load_api_key(filename="key.txt"):
@@ -163,7 +179,7 @@ async def main():
     tasks = []
     base_img_filename=set_filename_base(imageParams=image_params)
     
-    for i in range(num_requests):
+    for i in range(image_count):
         task = generate_single_image(client, image_params, base_img_filename, index=i)
         if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
             tasks.append(task)
