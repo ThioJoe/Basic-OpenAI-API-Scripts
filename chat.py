@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import json
 import tkinter as tk
 import datetime
@@ -37,7 +37,7 @@ def load_api_key(filename="key.txt"):
         print("\nAPI key file not found. Please create a file named 'key.txt' in the same directory as this script and paste your API key in it.\n")
         exit()
 
-openai.api_key = load_api_key()
+client = OpenAI(api_key=load_api_key())  # Retrieves key from key.txt file  
 
 # Generate the filename only once when the script starts
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -53,7 +53,7 @@ def send_and_receive_message(userMessage, messagesTemp, temperature=0.5):
         log_file.write(f"{messagesTemp[-1]['role'].capitalize()}:\n\n    {indented_user_message}\n\n")  # Extra '\n' for blank line
 
     # Call the OpenAI API
-    chatResponse = openai.chat.completions.create(
+    chatResponse = client.chat.completions.create(
         model=model,
         messages=messagesTemp,
         temperature=temperature
