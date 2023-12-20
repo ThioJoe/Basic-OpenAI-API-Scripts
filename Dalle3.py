@@ -10,13 +10,12 @@
 # ========================================================= USER SETTINGS ==============================================================
 # ======================================================================================================================================
 
-num_requests = 4  # Number of images to generate
+# Number of images to generate
+# Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers
+num_requests = 2
 
 # 4000 characters max prompt length for DALL-E 3, 1000 for DALL-E 2
-prompt = (
-"Subject: Incredibly cute creature drawing. Round and spherical, very fluffy."
-" Style: Colored pencil illustration."
-)
+prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Colored pencil drawing."
 
 image_params = {
 "model": "dall-e-3",  # dall-e-3 or dall-e-2
@@ -150,7 +149,7 @@ async def main():
                 print(f"{image_path} was saved")
                 
                 # Create dictionary with image_obj and revised_prompt to return
-                generated_image = {"image": image_obj, "revised_prompt": revised_prompt, "file_name": f"{img_filename}.png"}
+                generated_image = {"image": image_obj, "revised_prompt": revised_prompt, "file_name": f"{img_filename}.png", "image_params": image_params}
                 return generated_image
             
             else:
@@ -166,7 +165,8 @@ async def main():
     
     for i in range(num_requests):
         task = generate_single_image(client, image_params, base_img_filename, index=i)
-        tasks.append(task)
+        if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
+            tasks.append(task)
 
     generated_image_dicts_list = await asyncio.gather(*tasks)
     
@@ -177,10 +177,15 @@ async def main():
             image_objects.append(image_dict["image"])
     
     # Open a text file to save the revised prompts. It will open within the Image Outputs folder in append only mode. It appends the revised prompt to the file along with the file name
-    with open(os.path.join(output_dir, "Prompts.txt"), "a") as revised_prompt_file:
+    with open(os.path.join(output_dir, "Image_Log.txt"), "a") as log_file:
         for image_dict in generated_image_dicts_list:
-            revised_prompt_file.write(f"{image_dict['file_name']}: {image_dict['revised_prompt']}\n\n")
-
+            log_file.write(
+                                f"{image_dict['file_name']}: \n"
+                                f"\t Quality:\t\t\t\t{image_dict['image_params']['quality']}\n"
+                                f"\t Style:\t\t\t\t\t{image_dict['image_params']['style']}\n"
+                                f"\t User-Written Prompt:\t{image_params['prompt']}\n"
+                                f"\t Revised Prompt:\t\t{image_dict['revised_prompt']}\n\n"
+                                )
 
     # Display list of PIL Image objects in a tkinter window
     if image_objects:
@@ -199,7 +204,7 @@ async def main():
         for i, img in enumerate(image_objects):
             # Resize image
             if img.width > 512 or img.height > 512:
-                img.thumbnail((256, 256))  # Resize but keep aspect ratio
+                img.thumbnail((300, 300))  # Resize but keep aspect ratio
 
             # Convert PIL Image object to PhotoImage object
             tk_image = ImageTk.PhotoImage(img)
