@@ -10,6 +10,9 @@ import glob
 # gpt-4
 # gpt-3.5-turbo-16k
 
+# Not all models are available to all users. Run the "models" command to see the list of available models for your account.
+# See: https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
+
 model = "gpt-4"
 systemPrompt = "You are a helpful assistant."
 
@@ -89,6 +92,8 @@ def check_special_input(text):
         text = set_temperature()
     elif text == "box":
         text = get_multiline_input()
+    elif text == "models":
+        text = get_available_models()
     elif text == "exit":
         exit_script()
     return text
@@ -157,6 +162,19 @@ def switch_model():
     print(f"\nModel switched to {model}.")
     return ""
 
+def get_available_models():
+    modelsResponse = client.models.list()
+    rawModelsList = modelsResponse.model_dump()["data"] # Returns list of dictionaries
+    # Narrow down to models where name includes 'gpt'
+    gptModelsList = [model for model in rawModelsList if 'gpt' in model["id"]]
+    # Convert to a list of model names, arrange in descending alphabetical order
+    gptModelsList = [model["id"] for model in gptModelsList]
+    gptModelsList.sort(reverse=True)
+    print("\nAvailable models:\n")
+    for model in gptModelsList:
+        print(f"  {model}")
+    return ""
+
 def set_temperature():
     global temperature
     temp = float(input("\nEnter a temperature value between 0 and 1 (default is 0.5): "))
@@ -211,6 +229,7 @@ print("  box:    Send the contents of a multi-line text box as your message. It 
 print("  clear:  Clear the conversation history.")
 print("  save:   Save the conversation history to a file in 'Saved Chats' folder.")
 print("  load:   Load the conversation history from a file in 'Saved Chats' folder.")
+print("  models: List available GPT models.")
 print("  switch: Switch the model.")
 print("  temp:   Set the temperature.")
 print("  exit:   Exit the script.\n")
