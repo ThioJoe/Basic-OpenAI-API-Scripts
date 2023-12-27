@@ -14,7 +14,7 @@
 prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Colored pencil drawing."
 
 # Number of images to generate  |  (Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers )
-image_count = 3
+image_count = 4
 
 # DALLE-2 or DALLE-3
 dalle_version = 3       # 2 or 3
@@ -75,15 +75,15 @@ if dalle_version == 2:
     if dalle2_size.lower() not in valid_dalle2_sizes:
         print(f"\nERROR - Invalid size for DALLE-2: {dalle2_size}. Valid values are: {valid_dalle2_sizes}")
         exit()
-    if image_count > 10:
-        print(f"\nERROR - Invalid image_count value: {image_count}. DALLE-2 only supports up to 10 images per request.")
-        exit()
+    # if image_count > 10:
+    #     print(f"\nERROR - Invalid image_count value: {image_count}. DALLE-2 only supports up to 10 images per request.")
+    #     exit()
 
 # Define image parameters based on user settings
 if dalle_version == 3:
     model = 'dall-e-3'
-    images_per_batch = 1
-    num_parallel_requests = image_count
+    # Create list of batches of length image_count with 1 image per batch
+    images_per_batch_list = [1] * image_count
     
     # Define Size
     if dalle3_size.lower() in ["1024x1024", "square", "s"]:
@@ -95,9 +95,12 @@ if dalle_version == 3:
     
 elif dalle_version == 2:
     model = 'dall-e-2'
-    images_per_batch = image_count
-    num_parallel_requests = 1
     
+    # Calculate list of batches required to generate image_count images, max 10 per batch, ensure leftover images are in their own batch
+    images_per_batch_list = [10] * (image_count // 10)
+    if image_count % 10 != 0:
+        images_per_batch_list.append(image_count % 10)
+       
     # Define Size
     if dalle2_size.lower() in ["256x256", "small", "s"]:
         size = "256x256"
@@ -116,7 +119,7 @@ image_params = {
 "prompt": prompt,     
 "user": "User",     # Can add customer identifier to for abuse monitoring
 "response_format": "b64_json",  # "url" or "b64_json"
-"n": images_per_batch,  # DALLE3 must be 1. DALLE2 up to 10
+"n": 1,  # DALLE3 must be 1. DALLE2 up to 10. Update this value to change number of images per request
 }
 
 # --------------------------------------------------------------------------------------------------------------------------------------
@@ -171,7 +174,9 @@ def set_filename_base(model=None, imageParams=None):
 async def main():    
     client = OpenAI(api_key=load_api_key())  # Retrieves key from key.txt file  
    
-    async def generate_images_batch(client, image_params, base_img_filename, start_index=0):
+    async def generate_images_batch(client, image_params, base_img_filename, images_in_batch, start_index=0):
+        # Update image_params with number of images to generate this batch
+        image_params["n"] = images_in_batch
         try:
             # Make an API request for images
             images_response = await asyncio.to_thread(client.images.generate, **image_params)
@@ -216,14 +221,14 @@ async def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    
     generated_image_dicts_batches_list = []
     tasks = []
     index = 0
-    for i in range(num_parallel_requests):
-        task = generate_images_batch(client, image_params, base_img_filename, start_index=index)
+    for images_in_batch in images_per_batch_list:
+        # Call function that generates the images
+        task = generate_images_batch(client, image_params, base_img_filename, images_in_batch, start_index=index)
         if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
-            index = index + image_params["n"]
+            index = index + images_in_batch
             tasks.append(task)
 
     generated_image_dicts_batches_list = await asyncio.gather(*tasks) # Gives a list of lists of dictionaries
