@@ -218,40 +218,121 @@ async def main():
                                 f"\t Revised Prompt:\t\t{image_dict['revised_prompt']}\n\n"
                                 )
 
-    # Display list of PIL Image objects in a tkinter window
-    if image_objects:
-        
-        # Calculate grid size (rows and columns)
-        grid_size = math.ceil(math.sqrt(len(image_objects)))
-        
-        # Create a single tkinter window
-        window = tk.Tk()
-        window.title("Images Preview")
-        
-        # Set the window as topmost initially
-        window.attributes('-topmost', True)
-        window.after_idle(window.attributes, '-topmost', False)
+# --------------------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------- Image  Preview Window Code -----------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------------
+    if not image_objects:
+        print("\nNo images were generated.")
+        exit()
 
-        for i, img in enumerate(image_objects):
-            # Resize image
-            if img.width > 512 or img.height > 512:
-                img.thumbnail((300, 300))  # Resize but keep aspect ratio
-
-            # Convert PIL Image object to PhotoImage object
-            tk_image = ImageTk.PhotoImage(img)
+    # Calculates how many rows/columns are needed to display images in a most square fashion
+    def calculate_grid_dimensions(num_images):
+        grid_size = math.ceil(math.sqrt(num_images))
+        
+        # For a square grid or when there are fewer images than the grid size
+        if num_images <= grid_size * (grid_size - 1):
+            # Use one less row or column
+            rows = min(num_images, grid_size - 1)
+            columns = math.ceil(num_images / rows)
+        else:
+            # Use a square grid
+            rows = columns = grid_size
             
-            # Determine row and column for this image
+        if aspect_ratio > 1.5:
+            # Stack images horizontally first
+            rows, columns = columns, rows
+
+        return rows, columns
+
+    def resize_images(window, original_image_objects, labels, last_resize_dim):
+        window_width = window.winfo_width()
+        window_height = window.winfo_height()
+
+        # Check if the change in window size exceeds the threshold, then resize images if so
+        if (abs(window_width - last_resize_dim[0]) > resize_threshold or abs(window_height - last_resize_dim[1]) > resize_threshold):
+            last_resize_dim[0] = window_width
+            last_resize_dim[1] = window_height
+            
+            # Calculate the size of the grid cell
+            cell_width = window_width // num_columns
+            cell_height = window_height // num_rows
+
+            def resize_aspect_ratio(img, max_width, max_height):
+                original_width, original_height = img.size
+                ratio = min(max_width/original_width, max_height/original_height)
+                new_size = (int(original_width * ratio), int(original_height * ratio))
+                return img.resize(new_size, Image.Resampling.BILINEAR)
+
+            # Resize and update each image to fit its cell
+            for original_img, label in zip(original_image_objects, labels):
+                resized_img = resize_aspect_ratio(original_img, cell_width, cell_height)
+                tk_image = ImageTk.PhotoImage(resized_img)
+                label.configure(image=tk_image)
+                label.image = tk_image  # Keep a reference to avoid garbage collection
+
+    # Get images aspect ratio to decide whether to stack images horizontally or vertically first
+    img_width = image_objects[0].width
+    img_height = image_objects[0].height
+    aspect_ratio = img_width / img_height
+    desired_initial_size = 300
+
+    # Resize threshold in pixels, minimum change in window size to trigger resizing of images
+    resize_threshold = 5  # Setting this too low may cause laggy window
+  
+    # Calculate grid size (rows and columns)
+    grid_size = math.ceil(math.sqrt(len(image_objects)))
+
+    # Create a single tkinter window
+    window = tk.Tk()
+    window.title("Images Preview")
+
+    num_rows, num_columns = calculate_grid_dimensions(len(image_objects))
+
+    # Calcualte scale multiplier to get smallest side to fit desired initial size
+    scale_multiplier = desired_initial_size / min(img_width, img_height)
+
+    # Set initial window size to fit all images
+    initial_window_width = int(img_width * num_columns * scale_multiplier)
+    initial_window_height = int(img_height * num_rows * scale_multiplier)
+    window.geometry(f"{initial_window_width}x{initial_window_height}")
+
+    labels = []
+    original_image_objects = [img.copy() for img in image_objects]  # Store original images for resizing
+
+    for i, img in enumerate(image_objects):
+        # Convert PIL Image object to PhotoImage object
+        tk_image = ImageTk.PhotoImage(img)
+        
+        # Determine row and column for this image
+        if aspect_ratio > 1.5:
+            # Stack images horizontally first
+            row = i % grid_size
+            col = i // grid_size
+        else:
             row = i // grid_size
             col = i % grid_size
 
-            # Create a 'lablel' to be able to display image within it
-            label = tk.Label(window, image=tk_image)
-            label.image = tk_image  # Keep a reference to avoid garbage collection
-            label.grid(row=row, column=col)
+        # Create a 'label' to be able to display image within it
+        label = tk.Label(window, image=tk_image, borderwidth=2, relief="groove")
+        label.image = tk_image  # Keep a reference to avoid garbage collection
+        label.grid(row=row, column=col, sticky="nw")
+        labels.append(label)
 
-        # Run the tkinter main loop - this will display all images in a single window
-        print("\nFinished - Displaying images in window (it may be minimized).")
-        window.mainloop()
+    # Configure grid weights to allow dynamic resizing
+    for r in range(num_columns):
+        window.grid_rowconfigure(r, weight=0) # Setting weight to 0 keeps images pinned to top left
+    for c in range(num_rows):
+        window.grid_columnconfigure(c, weight=0) # Setting weight to 0 keeps images pinned to top left
+
+    # Initialize last_resize_dim
+    last_resize_dim = [window.winfo_width(), window.winfo_height()]
+
+    # Bind resize event
+    window.bind('<Configure>', lambda event: resize_images(window, original_image_objects, labels, last_resize_dim))
+
+    # Run the tkinter main loop - this will display all images in a single window
+    print("\nFinished - Displaying images in window (it may be minimized).")
+    window.mainloop()
             
 
 # --------------------------------------------------------------------------------------------------------------------------------------   
