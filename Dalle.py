@@ -9,16 +9,16 @@
 prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Colored pencil drawing."
 
 # Number of images to generate  |  (Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers )
-image_count = 4
+image_count = 3
 
 # DALLE-2 or DALLE-3
 dalle_version = 3       # 2 or 3
 
 # DALLE-3 Options:
-dalle3_size = "W"       # S/square | W/wide | T/tall -- (1024x1024, 1792x1024, 1024x1792)
+dalle3_size = "S"       # S/square | W/wide | T/tall -- (1024x1024, 1792x1024, 1024x1792)
 quality = "standard"    # Standard / HD
 style = "vivid"         # "vivid" or "natural"
-exact_prompt_mode = True  # True | False - This mode will attempt to prevent the API from revising or embellishing the prompt. Not always successful.
+exact_prompt_mode = False  # True | False - This mode will attempt to prevent the API from revising or embellishing the prompt. Not always successful.
 
 # DALLE-2 Options:
 dalle2_size = "L"  # S/small | M/medium | L/large -- (256x256, 512x512, 1024x1024)
