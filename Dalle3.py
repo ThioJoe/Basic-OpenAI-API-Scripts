@@ -149,32 +149,7 @@ def load_api_key(filename="key.txt"):
         print("\nAPI key file not found. Please create a file named 'key.txt' in the same directory as this script and paste your API key in it.\n")
         exit()
 
-async def fetch_image(session, url, img_filename, i):
-    async with session.get(url) as response:
-        if response.status != 200:
-            print(f"Failed to download image from {url}. Status: {response.status}")
-            return None
-        content = await response.read()
-        image = Image.open(BytesIO(content))
-        image.save(f"{img_filename}_{i}.png")
-        print(f"{img_filename}_{i}.png was saved")
-        return image
-    
-async def generate_single_image(client, image_params, img_filename, index):
-    try:
-        images_response = await asyncio.to_thread(client.images.generate, **image_params)
-        image_url_list = [image.model_dump()["url"] for image in images_response.data]
-        image_objects = await download_images(image_url_list, f"{img_filename}_{index}")
-        return image_objects
-    except Exception as e:
-        print(f"Error: {e}")
-        return []    
-
-async def download_images(image_urls, img_filename):
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_image(session, url, img_filename, i) for i, url in enumerate(image_urls)]
-        return await asyncio.gather(*tasks)
-    
+   
 def set_filename_base(model=None, imageParams=None):
     # Can pass in either the model name directly or the imageParams dictionary used in API request
     if imageParams:
@@ -195,74 +170,26 @@ def set_filename_base(model=None, imageParams=None):
 
 async def main():    
     client = OpenAI(api_key=load_api_key())  # Retrieves key from key.txt file  
-  
-    async def generate_single_image(client, image_params, base_img_filename, index):
+   
+    async def generate_images_batch(client, image_params, base_img_filename, start_index=0):
         try:
-            
-            # Make an API request for a single image
+            # Make an API request for images
             images_response = await asyncio.to_thread(client.images.generate, **image_params)
-
-            # Create a unique filename for this image
-            images_dt = datetime.utcfromtimestamp(images_response.created)
-            img_filename = images_dt.strftime(f'{base_img_filename}-%Y%m%d_%H%M%S_{index}')
-            
-            # Process the response
-            image_data = images_response.data[0]
-
-            # Extract either the base64 image data or the image URL
-            image_obj = image_data.model_dump()["b64_json"]
-            image_url = image_data.model_dump()["url"]
-
-            # Extract Additional Data
-            revised_prompt = image_data.model_dump()["revised_prompt"]
-            
-            if image_obj:
-                # Decode any returned base64 image data
-                image_obj = Image.open(BytesIO(base64.b64decode(image_obj)))  # Append the Image object to the list
-            elif image_url:
-                # Download any image from URL
-                async with aiohttp.ClientSession() as session:
-                    image_obj = await fetch_image(session, image_url, output_dir, index)
-            else:
-                print(f"No image URL or Image found for request {index}.")
-                return None
-
-            # Check if 'output' folder exists, if not create it
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-
-            if image_obj is not None:
-                image_path = os.path.join(output_dir, f"{img_filename}.png")
-                image_obj.save(image_path)
-                print(f"{image_path} was saved")
-                
-                # Create dictionary with image_obj and revised_prompt to return
-                generated_image = {"image": image_obj, "revised_prompt": revised_prompt, "file_name": f"{img_filename}.png", "image_params": image_params}
-                return generated_image
-            
-            else:
-                return None
-
         except Exception as e:
-            print(f"Error occurred during generation of image {index}: {e}")
+            print(f"Error occurred during generation of image(s): {e}")
             return None
-        
-    def generate_images_batch(client, image_params, base_img_filename):
-        # Make an API request for multiple images
-        images_response = client.images.generate(**image_params)
         
         # Create a unique filename for this image
         images_dt = datetime.utcfromtimestamp(images_response.created)
         
-        generated_image_dicts_list = []
-                
+        batch_image_dicts_list = []
+        
+        i = start_index
         # Process the response
-        i=0
         for image_data in images_response.data:
             img_filename = images_dt.strftime(f'{base_img_filename}-%Y%m%d_%H%M%S_{i}')
             # Extract either the base64 image data or the image URL
             image_obj = image_data.model_dump()["b64_json"]
-            image_url = image_data.model_dump()["url"]
             
             if image_obj:
                 # Decode any returned base64 image data
@@ -277,36 +204,43 @@ async def main():
                 
                 # Create dictionary with image_obj and revised_prompt to return
                 generated_image = {"image": image_obj, "revised_prompt": revised_prompt, "file_name": f"{img_filename}.png", "image_params": image_params}
-                generated_image_dicts_list.append(generated_image)
+                batch_image_dicts_list.append(generated_image)
                 i = i + 1
         
-        return generated_image_dicts_list
+        return batch_image_dicts_list
     
     print("\nGenerating images...")
     base_img_filename=set_filename_base(imageParams=image_params)
     
-    if image_params["n"] > 1:
-        generated_image_dicts_list = generate_images_batch(client, image_params, base_img_filename)
-        
-    else:
-        generated_image_dicts_list = []
-        tasks = []
-        for i in range(image_count):
-            task = generate_single_image(client, image_params, base_img_filename, index=i)
-            if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
-                tasks.append(task)
-
-        generated_image_dicts_list = await asyncio.gather(*tasks)
+    # Check if 'output' folder exists, if not create it
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     
-    # Get the image objects from the dictionaries and put into image_objects list
-    image_objects = []
-    for image_dict in generated_image_dicts_list:
-        if image_dict is not None:
-            image_objects.append(image_dict["image"])
+    
+    generated_image_dicts_batches_list = []
+    tasks = []
+    index = 0
+    for i in range(num_parallel_requests):
+        task = generate_images_batch(client, image_params, base_img_filename, start_index=index)
+        if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
+            index = index + image_params["n"]
+            tasks.append(task)
+
+    generated_image_dicts_batches_list = await asyncio.gather(*tasks) # Gives a list of lists of dictionaries
+    
+    flattened_generated_image_dicts_list = []
+    image_objects_to_display = []
+    
+    # Flatten the nested lists of dictionaries into a single list of dictionaries. Get image objects and put into list to display later
+    for image_dict_list in generated_image_dicts_batches_list:
+        for image_dict in image_dict_list:
+            if image_dict is not None:
+                flattened_generated_image_dicts_list.append(image_dict)
+                image_objects_to_display.append(image_dict["image"])
     
     # Open a text file to save the revised prompts. It will open within the Image Outputs folder in append only mode. It appends the revised prompt to the file along with the file name
     with open(os.path.join(output_dir, "Image_Log.txt"), "a") as log_file:
-        for image_dict in generated_image_dicts_list:
+        for image_dict in flattened_generated_image_dicts_list:
             if image_dict is not None:
                 # If using DALLE-2, adjust not-applicable parameters
                 if dalle_version == 2:
@@ -323,7 +257,7 @@ async def main():
 # --------------------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------- Image  Preview Window Code -----------------------------------------------------------
 # --------------------------------------------------------------------------------------------------------------------------------------
-    if not image_objects:
+    if not image_objects_to_display:
         print("\nNo images were generated.")
         exit()
 
@@ -373,8 +307,8 @@ async def main():
                 label.image = tk_image  # Keep a reference to avoid garbage collection
 
     # Get images aspect ratio to decide whether to stack images horizontally or vertically first
-    img_width = image_objects[0].width
-    img_height = image_objects[0].height
+    img_width = image_objects_to_display[0].width
+    img_height = image_objects_to_display[0].height
     aspect_ratio = img_width / img_height
     desired_initial_size = 300
 
@@ -382,13 +316,13 @@ async def main():
     resize_threshold = 5  # Setting this too low may cause laggy window
   
     # Calculate grid size (rows and columns)
-    grid_size = math.ceil(math.sqrt(len(image_objects)))
+    grid_size = math.ceil(math.sqrt(len(image_objects_to_display)))
 
     # Create a single tkinter window
     window = tk.Tk()
     window.title("Images Preview")
 
-    num_rows, num_columns = calculate_grid_dimensions(len(image_objects))
+    num_rows, num_columns = calculate_grid_dimensions(len(image_objects_to_display))
 
     # Calcualte scale multiplier to get smallest side to fit desired initial size
     scale_multiplier = desired_initial_size / min(img_width, img_height)
@@ -399,9 +333,9 @@ async def main():
     window.geometry(f"{initial_window_width}x{initial_window_height}")
 
     labels = []
-    original_image_objects = [img.copy() for img in image_objects]  # Store original images for resizing
+    original_image_objects = [img.copy() for img in image_objects_to_display]  # Store original images for resizing
 
-    for i, img in enumerate(image_objects):
+    for i, img in enumerate(image_objects_to_display):
         # Convert PIL Image object to PhotoImage object
         tk_image = ImageTk.PhotoImage(img)
         
