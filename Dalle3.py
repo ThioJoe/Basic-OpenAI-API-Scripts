@@ -63,8 +63,21 @@ if image_params["n"] > 1 and image_params["model"].lower() == "dall-e-3":
     print(f"\nERROR - Invalid n value: {image_params['n']}. DALL-E 3 only supports n=1. To generate multiple images, set the 'image_count' variable.")
     exit()
 
+# Validate API Key
+def validate_api_key(api_key):
+    # Check if string begins with 'sk-'
+    if not api_key.lower().startswith('sk-'):
+        if api_key == "":
+            print("\nERROR - No API key found in key.txt. Please paste your API key in key.txt and try again.")
+        else:
+            print("\nERROR - Invalid API key found in key.txt. Please check your API key and try again.")
+        exit()
+    else:
+        return api_key
+
 # Load API key from key.txt file
 def load_api_key(filename="key.txt"):
+    api_key = ""
     try:
         with open(filename, "r", encoding='utf-8') as key_file:
             for line in key_file:
@@ -72,6 +85,7 @@ def load_api_key(filename="key.txt"):
                 if not stripped_line.startswith('#') and stripped_line != '':
                     api_key = stripped_line
                     break
+        api_key = validate_api_key(api_key)
         return api_key
     except FileNotFoundError:
         print("\nAPI key file not found. Please create a file named 'key.txt' in the same directory as this script and paste your API key in it.\n")
@@ -179,6 +193,7 @@ async def main():
     tasks = []
     base_img_filename=set_filename_base(imageParams=image_params)
     
+    print("\nGenerating images...")
     for i in range(image_count):
         task = generate_single_image(client, image_params, base_img_filename, index=i)
         if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
