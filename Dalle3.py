@@ -10,23 +10,22 @@
 # ========================================================= USER SETTINGS ==============================================================
 # ======================================================================================================================================
 
-# Number of images to generate  |  (Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers )
-image_count = 2
-
 # 4000 characters max prompt length for DALL-E 3, 1000 for DALL-E 2
 prompt = "Incredibly cute creature drawing. Round and spherical, very fluffy. Colored pencil drawing."
 
-image_params = {
-"model": "dall-e-3",  # dall-e-3 or dall-e-2
-"quality": "standard",  # Standard / HD - (DALLE-3 Only)
-"size": "1024x1024",  # DALLE3 Options: 1024x1024 | 1792x1024 | 1024x1792
-"style": "vivid",  # "vivid" or "natural" - (DALLE-3 Only)
-# ------- Don't Change Below --------
-"prompt": prompt,     
-"user": "User",     # Can add customer identifier to for abuse monitoring
-"response_format": "b64_json",  # "url" or "b64_json"
-"n": 1,               # DALLE3 must be 1. DALLE2 up to 10
-}
+# Number of images to generate  |  (Take note of your rate limits: https://platform.openai.com/docs/guides/rate-limits/usage-tiers )
+image_count = 3
+
+# DALLE-2 or DALLE-3
+dalle_version = 3       # 2 or 3
+
+# DALLE-3 Options:
+dalle3_size = "W"       # S/square | W/wide | T/tall -- (1024x1024, 1792x1024, 1024x1792)
+quality = "standard"    # Standard / HD
+style = "vivid"         # "vivid" or "natural"
+
+# DALLE-2 Options:
+dalle2_size = "L"  # S/small | M/medium | L/large -- (256x256, 512x512, 1024x1024)
 
 output_dir = 'Image Outputs'
 
@@ -46,22 +45,81 @@ from openai import OpenAI
 import math
 #import requests #If downloading from URL, not currently implemented
 
+# --------------------------------------------------- SETTINGS VALIDATION ---------------------------------------------------------------
+
+# Valid settings for each setting
+valid_dalle_versions = [2, 3]
+valid_qualities = ["standard", "hd"]
+valid_styles = ["vivid", "natural"]
+valid_dalle3_sizes = ["1024x1024", "1792x1024", "1024x1792", "square", "wide", "tall", "s", "w", "t"]
+valid_dalle2_sizes = ["256x256", "512x512", "1024x1024", "small", "medium", "large", "s", "m", "l"]
+
+
 # Validate user settings
-if image_params["model"].lower() not in ["dall-e-3", "dall-e-2"]:
-    print(f"\nERROR - Invalid model: {image_params['model']}. Please choose either 'dall-e-3' or 'dall-e-2'.")
+if dalle_version not in valid_dalle_versions:
+    print(f"\nERROR - Invalid DALLE version: {dalle_version}. Please choose either 2 or 3.")
     exit()
-if image_params["quality"].lower() not in ["standard", "hd"]:
-    print(f"\nERROR - Invalid quality: {image_params['quality']}. Please choose either 'standard' or 'hd'.")
-    exit()
-if image_params["style"].lower() not in ["vivid", "natural"]:
-    print(f"\nERROR - Invalid style: {image_params['style']}. Please choose either 'vivid' or 'natural'.")
-    exit()
-if image_params["size"] not in ["1024x1024", "1792x1024", "1024x1792"]:
-    print(f"\nERROR - Invalid size: {image_params['size']}. Please choose either '1024x1024', '1792x1024', or '1024x1792'.")
-    exit()
-if image_params["n"] > 1 and image_params["model"].lower() == "dall-e-3":
-    print(f"\nERROR - Invalid n value: {image_params['n']}. DALL-E 3 only supports n=1. To generate multiple images, set the 'image_count' variable.")
-    exit()
+    
+if dalle_version == 3:
+    if quality.lower() not in valid_qualities:
+        print(f"\nERROR - Invalid quality: {quality}. Please choose either 'standard' or 'hd'.")
+        exit()
+    if style.lower() not in valid_styles:
+        print(f"\nERROR - Invalid style: {style}. Please choose either 'vivid' or 'natural'.")
+        exit()
+    if dalle3_size.lower() not in valid_dalle3_sizes:
+        print(f"\nERROR - Invalid size for DALLE-3: {dalle3_size}. Valid values are: {valid_dalle3_sizes}")
+        exit()
+        
+if dalle_version == 2:
+    if dalle2_size.lower() not in valid_dalle2_sizes:
+        print(f"\nERROR - Invalid size for DALLE-2: {dalle2_size}. Valid values are: {valid_dalle2_sizes}")
+        exit()
+    if image_count > 10:
+        print(f"\nERROR - Invalid image_count value: {image_count}. DALLE-2 only supports up to 10 images per request.")
+        exit()
+
+# Define image parameters based on user settings
+if dalle_version == 3:
+    model = 'dall-e-3'
+    images_per_batch = 1
+    num_parallel_requests = image_count
+    
+    # Define Size
+    if dalle3_size.lower() in ["1024x1024", "square", "s"]:
+        size = "1024x1024"
+    elif dalle3_size.lower() in ["1792x1024", "wide", "w"]:
+        size = "1792x1024"
+    elif dalle3_size.lower() in ["1024x1792", "tall", "t"]:
+        size = "1024x1792"
+    
+elif dalle_version == 2:
+    model = 'dall-e-2'
+    images_per_batch = image_count
+    num_parallel_requests = 1
+    
+    # Define Size
+    if dalle2_size.lower() in ["256x256", "small", "s"]:
+        size = "256x256"
+    elif dalle2_size.lower() in ["512x512", "medium", "m"]:
+        size = "512x512"
+    elif dalle2_size.lower() in ["1024x1024", "large", "l"]:
+        size = "1024x1024"
+    
+# Construct image_params dictionary based on user settings
+image_params = {
+"model": model,  # dall-e-3 or dall-e-2
+"quality": quality,  # Standard / HD - (DALLE-3 Only)
+"size": size,  # DALLE3 Options: 1024x1024 | 1792x1024 | 1024x1792 -- DALLE2 Options: 256x256 | 512x512 | 1024x1024
+"style": style,  # "vivid" or "natural" - (DALLE-3 Only)
+# ------- Don't Change Below --------
+"prompt": prompt,     
+"user": "User",     # Can add customer identifier to for abuse monitoring
+"response_format": "b64_json",  # "url" or "b64_json"
+"n": images_per_batch,  # DALLE3 must be 1. DALLE2 up to 10
+}
+
+# --------------------------------------------------------------------------------------------------------------------------------------
 
 # Validate API Key
 def validate_api_key(api_key):
@@ -147,7 +205,7 @@ async def main():
             # Create a unique filename for this image
             images_dt = datetime.utcfromtimestamp(images_response.created)
             img_filename = images_dt.strftime(f'{base_img_filename}-%Y%m%d_%H%M%S_{index}')
-
+            
             # Process the response
             image_data = images_response.data[0]
 
@@ -188,18 +246,57 @@ async def main():
         except Exception as e:
             print(f"Error occurred during generation of image {index}: {e}")
             return None
-
-    generated_image_dicts_list = []
-    tasks = []
-    base_img_filename=set_filename_base(imageParams=image_params)
+        
+    def generate_images_batch(client, image_params, base_img_filename):
+        # Make an API request for multiple images
+        images_response = client.images.generate(**image_params)
+        
+        # Create a unique filename for this image
+        images_dt = datetime.utcfromtimestamp(images_response.created)
+        
+        generated_image_dicts_list = []
+                
+        # Process the response
+        i=0
+        for image_data in images_response.data:
+            img_filename = images_dt.strftime(f'{base_img_filename}-%Y%m%d_%H%M%S_{i}')
+            # Extract either the base64 image data or the image URL
+            image_obj = image_data.model_dump()["b64_json"]
+            image_url = image_data.model_dump()["url"]
+            
+            if image_obj:
+                # Decode any returned base64 image data
+                image_obj = Image.open(BytesIO(base64.b64decode(image_obj)))
+                image_path = os.path.join(output_dir, f"{img_filename}.png")
+                image_obj.save(image_path)
+                print(f"{image_path} was saved")
+                
+                revised_prompt = image_data.model_dump()["revised_prompt"]
+                if not revised_prompt:
+                    revised_prompt = "N/A"
+                
+                # Create dictionary with image_obj and revised_prompt to return
+                generated_image = {"image": image_obj, "revised_prompt": revised_prompt, "file_name": f"{img_filename}.png", "image_params": image_params}
+                generated_image_dicts_list.append(generated_image)
+                i = i + 1
+        
+        return generated_image_dicts_list
     
     print("\nGenerating images...")
-    for i in range(image_count):
-        task = generate_single_image(client, image_params, base_img_filename, index=i)
-        if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
-            tasks.append(task)
+    base_img_filename=set_filename_base(imageParams=image_params)
+    
+    if image_params["n"] > 1:
+        generated_image_dicts_list = generate_images_batch(client, image_params, base_img_filename)
+        
+    else:
+        generated_image_dicts_list = []
+        tasks = []
+        for i in range(image_count):
+            task = generate_single_image(client, image_params, base_img_filename, index=i)
+            if task is not None: # In case some of the images fail to generate, we don't want to append None to the list
+                tasks.append(task)
 
-    generated_image_dicts_list = await asyncio.gather(*tasks)
+        generated_image_dicts_list = await asyncio.gather(*tasks)
     
     # Get the image objects from the dictionaries and put into image_objects list
     image_objects = []
@@ -210,12 +307,17 @@ async def main():
     # Open a text file to save the revised prompts. It will open within the Image Outputs folder in append only mode. It appends the revised prompt to the file along with the file name
     with open(os.path.join(output_dir, "Image_Log.txt"), "a") as log_file:
         for image_dict in generated_image_dicts_list:
-            log_file.write(
+            if image_dict is not None:
+                # If using DALLE-2, adjust not-applicable parameters
+                if dalle_version == 2:
+                    image_dict["image_params"]["quality"] = "N/A"
+                    image_dict["image_params"]["style"] = "N/A"
+                log_file.write(
                                 f"{image_dict['file_name']}: \n"
                                 f"\t Quality:\t\t\t\t{image_dict['image_params']['quality']}\n"
                                 f"\t Style:\t\t\t\t\t{image_dict['image_params']['style']}\n"
-                                f"\t User-Written Prompt:\t{image_params['prompt']}\n"
-                                f"\t Revised Prompt:\t\t{image_dict['revised_prompt']}\n\n"
+                                f"\t Revised Prompt:\t\t{image_dict['revised_prompt']}\n"
+                                f"\t User-Written Prompt:\t{image_params['prompt']}\n\n"
                                 )
 
 # --------------------------------------------------------------------------------------------------------------------------------------
