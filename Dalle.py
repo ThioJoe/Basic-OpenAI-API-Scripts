@@ -50,6 +50,9 @@ valid_styles = ["vivid", "natural"]
 valid_dalle3_sizes = ["1024x1024", "1792x1024", "1024x1792", "square", "wide", "tall", "s", "w", "t"]
 valid_dalle2_sizes = ["256x256", "512x512", "1024x1024", "small", "medium", "large", "s", "m", "l"]
 
+# Make variables lower case
+quality = quality.lower()
+style = style.lower()
 
 # Validate user settings
 if dalle_version not in valid_dalle_versions:
