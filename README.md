@@ -3,6 +3,7 @@
 ### Simple Python scripts for getting started with OpenAI's API
 - `Chat.py` - For interacting with the GPT-4 and chatting
 - `Dalle3.py` - For generating multiple images in parallel via DALL·E 3
+- `TTS.py` - For generating text-to-speech audio files.
 
 ## How to Use:
 1. Make sure any required packages are installed. You can use `pip install -r requirements.txt`
